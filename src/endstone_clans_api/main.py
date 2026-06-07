@@ -41,7 +41,7 @@ class ClansApiPlugin(Plugin):
 
     @property
     def config(self) -> ClansConfig:
-        return cast(ClansConfig, self._config)
+        return self._config
 
     def _load_config(self) -> ClansConfig:
         folder = Path(self.data_folder)
