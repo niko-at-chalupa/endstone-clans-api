@@ -12,7 +12,7 @@ class ClansApiPlugin(Plugin):
                 "/clan modify displayname <displayname: str>",
                 "/clan invite <player: player>",
                 "/clan kick <player: player>",
-                "/clan disband",
+                "/clan disband <name: str>",
             ],
             "permissions": ["clans-api.command"],
         }
