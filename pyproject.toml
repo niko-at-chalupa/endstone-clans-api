@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-clans-api"
+version = "0.1.0"
+description = ""
+authors = [
+    { name = "niko-at-chalupa"},
+    { name = "Sasha"}
+]
+dependencies = [
+    "endstone",
+]
+
+[project.entry-points."endstone"]
+breeze = "endstone_clans_api:ClansApiPlugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_clans_api"]
