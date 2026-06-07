@@ -8,10 +8,10 @@ version = "0.1.0"
 description = ""
 authors = [
     { name = "niko-at-chalupa"},
-    { name = "Sasha"}
 ]
 dependencies = [
     "endstone",
+    "sqlite3",
 ]
 
 [project.entry-points."endstone"]
