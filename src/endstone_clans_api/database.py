@@ -59,7 +59,7 @@ class Database:
                 WHERE m.player_uuid = ?
             """, (player_uuid,)).fetchall()
 
-    def update_clan(self, clan_id: int, name: str = None, display_name: str = None, owner_uuid: str = None):
+    def update_clan(self, clan_id: int, name: str | None = None, display_name: str | None = None, owner_uuid: str | None = None):
         with self._get_connection() as conn:
             if name:
                 conn.execute("UPDATE clans SET name = ? WHERE id = ?", (name, clan_id))
