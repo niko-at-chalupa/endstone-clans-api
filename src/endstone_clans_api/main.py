@@ -94,6 +94,7 @@ class ClansApiPlugin(Plugin):
             ("messages.no_subcommand", "No subcommand was provided. Try /clans help.", "Shown when /clans is used with no arguments"),
             ("messages.invalid_subcommand", "The subcommand provided isn't valid. Try /clan help.", "Shown when /clan is used with an invalid subcommand"),
             ("messages.generic_error", "A technical error has occoured. Please contact a server admin or owner.", "Generic error for commands"),
+            ("messages.help_header", "--- Clan Help ---", "Goes atop the help area."),
 
             # Everything underneath the help.* namespace is the help description for the
             # command specified.

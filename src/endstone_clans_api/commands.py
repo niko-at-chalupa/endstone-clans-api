@@ -29,7 +29,17 @@ class Subcommands(ABC):
 
 class ClansCommands(Subcommands):
     def help(self, sender: CommandSender, command: Command, args: list[str]):
-        raise NotImplementedError
+        help_messages = self.config.help
+
+        sender.send_message(self.plugin.config.messages.get("help_header", ""))
+        for subcommand in self.subcommand_map:
+            if subcommand in help_messages:
+                description = help_messages.get(subcommand)
+            else:
+                description = "[no description]"
+            sender.send_message(f"{subcommand} - {description}")
+
+        return True
 
     def create(self, sender: CommandSender, command: Command, args: list[str]):
         raise NotImplementedError
