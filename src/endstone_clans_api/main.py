@@ -10,6 +10,7 @@ from endstone.command import Command, CommandSender
 
 class ClansConfig(BaseModel):
     messages: dict[str, str] = Field(default_factory=dict)
+    help: dict[str, str] = Field(default_factory=dict)
 
 class ClansApiPlugin(Plugin):
     api_version = "0.11"
