@@ -37,7 +37,6 @@ class ClansApiPlugin(Plugin):
     def on_enable(self):
         self._config = self._load_config()
         self.register_events(self)
-        self.logger.info("Clans API Plugin enabled.")
 
     @property
     def config(self) -> ClansConfig:
