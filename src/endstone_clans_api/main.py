@@ -4,6 +4,7 @@ from endstone.plugin import Plugin
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
+from .database import Database
 
 class ClansConfig(BaseModel):
     messages: dict[str, str] = Field(default_factory=dict)
@@ -35,12 +36,18 @@ class ClansApiPlugin(Plugin):
     }
 
     def on_enable(self):
+        self.data_folder.mkdir(exist_ok=True)
         self._config = self._load_config()
+        self._db = Database(self.data_folder / "clans.db")
         self.register_events(self)
 
     @property
     def config(self) -> ClansConfig:
         return self._config
+
+    @property
+    def db(self) -> Database:
+        return self._db
 
     def _load_config(self) -> ClansConfig:
         folder = Path(self.data_folder)
