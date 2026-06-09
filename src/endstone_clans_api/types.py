@@ -37,7 +37,15 @@ class Clan(ABC):
         """
         ...
 
+    @property
+    @abstractmethod
+    def members_xuids(self) -> set[int]:
+        """
+        XUIDs of every player in this clan, including the owner.
+        """
+
 class _Clan(Clan):
+    _members_xuids: set[int]
     _display_name: str
     # Primary key
     _owner_xuid: int
@@ -50,6 +58,7 @@ class _Clan(Clan):
         self._owner_xuid = owner_xuid
         self._plugin = plugin
 
+        self._members_xuids = set()
         self._clean_name = remove_minecraft_formatting(display_name).lower()
 
     @property
@@ -63,3 +72,7 @@ class _Clan(Clan):
     @property
     def clean_name(self) -> str:
         return self._clean_name
+
+    @property
+    def members_xuids(self) -> set[int]:
+        return self._members_xuids
