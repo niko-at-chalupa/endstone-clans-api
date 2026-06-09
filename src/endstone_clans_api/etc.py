@@ -6,7 +6,7 @@ import xxhash
 # In Python, we convert the 8-byte string directly into an integer.
 HASH_SEED = int.from_bytes(b"clansapi\0", byteorder="big")
 
-def compute_plugin_id(kebab_name: str) -> int:
+def compute_id(kebab_name: str) -> int:
     """
     Generates a plugin ID that derives from the kebab-case name of plugins.
     Returns an unsigned 64-bit integer.
