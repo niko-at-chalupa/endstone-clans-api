@@ -13,6 +13,7 @@ dependencies = [
     "endstone",
     "pydantic",
     "ruamel.yaml",
+    "xxhash",
 ]
 
 [project.entry-points."endstone"]
