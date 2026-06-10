@@ -1,3 +1,4 @@
+from endstone import Logger
 from endstone.scheduler import Scheduler
 from endstone_clans_api.database import Database
 from abc import ABC
@@ -5,6 +6,8 @@ from typing import TYPE_CHECKING, Callable
 from endstone.command import CommandSender, Command
 from endstone.asyncio import get_loop, submit
 from endstone import Player
+from typing import Awaitable
+import concurrent.futures
 
 if TYPE_CHECKING:
     from .main import ClansConfig, ClansApiPlugin
@@ -33,6 +36,21 @@ class Subcommands(ABC):
     @property
     def scheduler(self) -> Scheduler:
         return self.plugin.server.scheduler
+
+    @property
+    def logger(self) -> Logger:
+        return self.plugin.logger
+
+    def _handle_future_result(self, future) -> None:
+        try:
+            future.result()
+        except Exception as e:
+            self.logger.error(str(e))
+
+    def _submit_and_handle_future_result(self, coro: Awaitable[_T]) -> concurrent.futures.Future[_T]:
+        future = submit(coro)
+        future.add_done_callback(self._handle_future_result)
+        return future
 
 class ClansCommands(Subcommands):
     def help(self, sender: CommandSender, command: Command, args: list[str]):
@@ -81,7 +99,7 @@ class ClansCommands(Subcommands):
                 self.plugin.logger.error(f"Error creating clan: {e}")
                 sender.send_error_message(self.messages.get("generic_error", "generic error"))
 
-        submit(create_task())
+        self._submit_and_handle_future_result(create_task())
         return True
 
     def rename(self, sender: CommandSender, command: Command, args: list[str]):
@@ -121,7 +139,7 @@ class ClansCommands(Subcommands):
                 self.plugin.logger.error(f"Error leaving clan: {e}")
                 sender.send_error_message(self.messages.get("generic_error", "generic error"))
 
-        submit(leave_task())
+        self._submit_and_handle_future_result(leave_task())
         return True
 
     def __init__(self, plugin: 'ClansApiPlugin'):
