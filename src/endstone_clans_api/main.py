@@ -7,6 +7,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from .database import Database, _Database
 from endstone.command import Command, CommandSender
+from .api import ClansApi
 
 class ClansConfig(BaseModel):
     messages: dict[str, str] = Field(default_factory=dict)
@@ -45,6 +46,7 @@ class ClansApiPlugin(Plugin):
         self._db = _Database(self, self.data_folder / "clans.db")
         self.register_events(self)
         self.clans_commands = ClansCommands(self)
+        self._api = ClansApi(self)
 
     def on_command(self, sender: CommandSender, command: Command, args: list[str]) -> bool:
         if command.name != "clan":
@@ -74,6 +76,10 @@ class ClansApiPlugin(Plugin):
     @property
     def config(self) -> ClansConfig:
         return self._config
+
+    @property
+    def api(self) -> ClansApi:
+        return self._api
 
     @property
     def db(self) -> Database:
