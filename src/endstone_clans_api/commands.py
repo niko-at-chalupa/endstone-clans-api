@@ -94,7 +94,35 @@ class ClansCommands(Subcommands):
         raise NotImplementedError
 
     def leave(self, sender: CommandSender, command: Command, args: list[str]):
-        raise NotImplementedError
+        if not isinstance(sender, Player):
+            sender.send_error_message(self.messages.get("not_a_player", "Only players can use this command."))
+            return True
+
+        async def leave_task():
+            try:
+                xuid = int(sender.xuid)
+                clan = self.db.get_member_clan(xuid)
+                
+                if not clan:
+                    sender.send_error_message(self.messages.get("not_in_clan", "You're not in a clan!"))
+                    return
+
+                if clan.owner_xuid == xuid:
+                    self.db.delete_clan(xuid)
+                    msg = self.messages.get("clan_disbanded", "clan disbanded")
+                    msg = msg.replace("[clan_name]", clan.display_name)
+                    sender.send_message(msg)
+                else:
+                    self.db.remove_member(clan.owner_xuid, xuid)
+                    msg = self.messages.get("clan_left", "clan disbanded")
+                    msg = msg.replace("[clan_name]", clan.display_name)
+                    sender.send_message(msg)
+            except Exception as e:
+                self.plugin.logger.error(f"Error leaving clan: {e}")
+                sender.send_error_message(self.messages.get("generic_error", "generic error"))
+
+        submit(leave_task())
+        return True
 
     def __init__(self, plugin: 'ClansApiPlugin'):
         self.plugin = plugin

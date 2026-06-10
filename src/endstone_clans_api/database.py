@@ -31,6 +31,14 @@ class Database(ABC):
         # they can only own one clan, or be in one clan.
         ...
 
+    @abstractmethod
+    def delete_clan(self, owner_xuid: int) -> None:
+        ...
+
+    @abstractmethod
+    def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
+        ...
+
 # The following was assisted by Claude
 class _Database(Database):
     def __init__(self, plugin: 'ClansApiPlugin', db_path: Path) -> None:
@@ -59,6 +67,12 @@ class _Database(Database):
         from .types import _Clan
         row = self._get_member_clan(member_xuid)
         return _Clan._from_db(self.plugin, row) if row else None
+
+    def delete_clan(self, owner_xuid: int) -> None:
+        self._delete_clan(owner_xuid)
+
+    def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
+        self._remove_member(owner_xuid, member_xuid)
 
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)

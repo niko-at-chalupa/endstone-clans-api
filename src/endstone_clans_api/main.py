@@ -98,6 +98,9 @@ class ClansApiPlugin(Plugin):
             ("messages.already_in_clan", "You're already in a clan!", "Message shown when a player tries to join/create a clan while in one"),
             ("messages.clan_name_taken", "A clan with that name already exists!", "Message shown when a clan name is already in use"),
             ("messages.usage_create", "Usage: /clan create <name>", "Message shown when /clan create is used incorrectly"),
+            ("messages.not_in_clan", "You're not in a clan!", "Message shown when a player tries to use a clan command but isn't in one"),
+            ("messages.clan_left", "You have left the clan [clan_name].", "Message shown when a player leaves a clan"),
+            ("messages.clan_disbanded", "Your clan [clan_name] has been disbanded.", "Message shown when a clan is disbanded because the owner left"),
             ("messages.help_header", "--- Clan Help ---", "Goes atop the help area."),
 
             # Everything underneath the help.* namespace is the help description for the
