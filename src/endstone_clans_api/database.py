@@ -67,17 +67,15 @@ class _Database(Database):
 
     def _init_db(self) -> None:
         with self._get_connection() as conn:
-            conn.execute("DROP TABLE IF EXISTS clan_members")
-            conn.execute("DROP TABLE IF EXISTS clans")
             conn.execute("""
-                CREATE TABLE clans (
+                CREATE TABLE IF NOT EXISTS clans (
                     owner_xuid INTEGER PRIMARY KEY,
                     clean_name TEXT UNIQUE NOT NULL,
                     display_name TEXT NOT NULL
                 )
             """)
             conn.execute("""
-                CREATE TABLE clan_members (
+                CREATE TABLE IF NOT EXISTS clan_members (
                     owner_xuid INTEGER NOT NULL,
                     member_xuid INTEGER NOT NULL UNIQUE,
                     PRIMARY KEY(owner_xuid, member_xuid),
