@@ -25,7 +25,7 @@ class Subcommands(ABC):
 
     @property
     def db(self) -> _Database:
-        return self.plugin.db
+        return self.plugin._db
 
 class ClansCommands(Subcommands):
     def help(self, sender: CommandSender, command: Command, args: list[str]):
