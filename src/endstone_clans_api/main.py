@@ -5,7 +5,7 @@ from endstone.plugin import Plugin
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
-from .database import Database
+from .database import _Database
 from endstone.command import Command, CommandSender
 
 class ClansConfig(BaseModel):
@@ -42,7 +42,7 @@ class ClansApiPlugin(Plugin):
     def on_enable(self):
         self.data_folder.mkdir(exist_ok=True)
         self._config = self._load_config()
-        self._db = Database(self.data_folder / "clans.db")
+        self._db = _Database(self.data_folder / "clans.db")
         self.register_events(self)
         self.clans_commands = ClansCommands(self)
 
@@ -76,7 +76,7 @@ class ClansApiPlugin(Plugin):
         return self._config
 
     @property
-    def db(self) -> Database:
+    def db(self) -> _Database:
         return self._db
 
     def _load_config(self) -> ClansConfig:

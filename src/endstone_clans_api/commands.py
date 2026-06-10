@@ -1,4 +1,4 @@
-from endstone_clans_api.database import Database
+from endstone_clans_api.database import _Database
 from abc import ABC
 from typing import TYPE_CHECKING, Callable
 from endstone.command import CommandSender, Command
@@ -24,7 +24,7 @@ class Subcommands(ABC):
         return self.config.messages
 
     @property
-    def db(self) -> Database:
+    def db(self) -> _Database:
         return self.plugin.db
 
 class ClansCommands(Subcommands):
