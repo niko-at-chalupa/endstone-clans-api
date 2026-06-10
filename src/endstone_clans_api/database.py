@@ -81,6 +81,9 @@ class _Database(Database):
 
     def _init_db(self) -> None:
         with self._get_connection() as conn:
+            # Cleanup old table if it exists
+            conn.execute("DROP TABLE IF EXISTS members")
+            
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS clans (
                     owner_xuid INTEGER PRIMARY KEY,
