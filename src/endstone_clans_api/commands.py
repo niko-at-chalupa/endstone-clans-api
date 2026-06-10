@@ -96,8 +96,7 @@ class ClansCommands(Subcommands):
                 msg = msg.replace("[clan_name]", clan_name)
                 self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
             except Exception as e:
-                self.plugin.logger.error(f"Error creating clan: {e}")
-                sender.send_error_message(self.messages.get("generic_error", "generic error"))
+                raise e
 
         self._submit_and_handle_future_result(create_task())
         return True
@@ -136,8 +135,7 @@ class ClansCommands(Subcommands):
                     msg = msg.replace("[clan_name]", clan.display_name)
                     self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
             except Exception as e:
-                self.plugin.logger.error(f"Error leaving clan: {e}")
-                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("generic_error", "generic error")))
+                raise e
 
         self._submit_and_handle_future_result(leave_task())
         return True
