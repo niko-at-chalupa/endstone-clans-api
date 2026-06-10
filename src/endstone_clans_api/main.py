@@ -94,6 +94,10 @@ class ClansApiPlugin(Plugin):
             ("messages.no_subcommand", "No subcommand was provided. Try /clans help.", "Shown when /clans is used with no arguments"),
             ("messages.invalid_subcommand", "The subcommand provided isn't valid. Try /clan help.", "Shown when /clan is used with an invalid subcommand"),
             ("messages.generic_error", "A technical error has occoured. Please contact a server admin or owner.", "Generic error for commands"),
+            ("messages.not_a_player", "Only players can use this command.", "Message shown when a non-player uses a player-only command"),
+            ("messages.already_in_clan", "You're already in a clan!", "Message shown when a player tries to join/create a clan while in one"),
+            ("messages.clan_name_taken", "A clan with that name already exists!", "Message shown when a clan name is already in use"),
+            ("messages.usage_create", "Usage: /clan create <name>", "Message shown when /clan create is used incorrectly"),
             ("messages.help_header", "--- Clan Help ---", "Goes atop the help area."),
 
             # Everything underneath the help.* namespace is the help description for the

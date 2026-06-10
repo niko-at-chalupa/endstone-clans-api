@@ -9,10 +9,9 @@ if TYPE_CHECKING:
     from .main import ClansApiPlugin
 
 class Database(ABC):
-    #@abstractmethod
-    #def create_clan(self, name: str, owner_xuid: int) -> None:
-    #    ...
-    # Let's not expose this for now
+    @abstractmethod
+    def create_clan(self, name: str, owner_xuid: int) -> None:
+        ...
 
     @abstractmethod
     def get_clan(self, name: str) -> Optional[Clan]:
@@ -38,6 +37,9 @@ class _Database(Database):
         self.plugin = plugin
         self.db_path = db_path
         self._init_db()
+
+    def create_clan(self, name: str, owner_xuid: int) -> None:
+        self._create_clan(name, owner_xuid)
 
     def get_clan(self, name: str) -> Optional[Clan]:
         from .types import _Clan
