@@ -3,7 +3,10 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from .types import Clan
 from .etc import remove_minecraft_formatting
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .main import ClansApiPlugin
 
 class Database(ABC):
     #@abstractmethod
@@ -12,11 +15,11 @@ class Database(ABC):
     # Let's not expose this for now
 
     @abstractmethod
-    def get_clan(self, name: str) -> Clan:
+    def get_clan(self, name: str) -> Optional[Clan]:
         ...
-    
+
     @abstractmethod
-    def get_clan_by_xuid(self, name: str) -> Clan:
+    def get_clan_by_xuid(self, xuid: int) -> Optional[Clan]:
         ...
 
     @abstractmethod
@@ -30,10 +33,30 @@ class Database(ABC):
         ...
 
 # The following was assisted by Claude
-class _Database:
-    def __init__(self, db_path: Path) -> None:
+class _Database(Database):
+    def __init__(self, plugin: 'ClansApiPlugin', db_path: Path) -> None:
+        self.plugin = plugin
         self.db_path = db_path
         self._init_db()
+
+    def get_clan(self, name: str) -> Optional[Clan]:
+        from .types import _Clan
+        clean_name = remove_minecraft_formatting(name).lower()
+        row = self._get_clan(clean_name)
+        return _Clan._from_db(self.plugin, row) if row else None
+
+    def get_clan_by_xuid(self, xuid: int) -> Optional[Clan]:
+        from .types import _Clan
+        row = self._get_clan_by_xuid(xuid)
+        return _Clan._from_db(self.plugin, row) if row else None
+
+    def get_members_xuids(self, owner_xuid: int) -> set[int]:
+        return self._get_members_xuids(owner_xuid)
+
+    def get_member_clan(self, member_xuid: int) -> Optional[Clan]:
+        from .types import _Clan
+        row = self._get_member_clan(member_xuid)
+        return _Clan._from_db(self.plugin, row) if row else None
 
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
