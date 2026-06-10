@@ -61,7 +61,7 @@ class _Database:
             """)
             conn.commit()
 
-    def create_clan(self, display_name: str, owner_xuid: int) -> None:
+    def _create_clan(self, display_name: str, owner_xuid: int) -> None:
         clean_name = remove_minecraft_formatting(display_name).lower()
         with self._get_connection() as conn:
             conn.execute(
@@ -75,21 +75,21 @@ class _Database:
             )
             conn.commit()
 
-    def get_clan(self, clean_name: str) -> Optional[tuple[int, str, str]]:
+    def _get_clan(self, clean_name: str) -> Optional[tuple[int, str, str]]:
         with self._get_connection() as conn:
             return conn.execute(
                 "SELECT owner_xuid, clean_name, display_name FROM clans WHERE clean_name = ?",
                 (clean_name,)
             ).fetchone()
 
-    def get_clan_by_xuid(self, owner_xuid: int) -> Optional[tuple[int, str, str]]:
+    def _get_clan_by_xuid(self, owner_xuid: int) -> Optional[tuple[int, str, str]]:
         with self._get_connection() as conn:
             return conn.execute(
                 "SELECT owner_xuid, clean_name, display_name FROM clans WHERE owner_xuid = ?",
                 (owner_xuid,)
             ).fetchone()
 
-    def get_members_xuids(self, owner_xuid: int) -> set[int]:
+    def _get_members_xuids(self, owner_xuid: int) -> set[int]:
         with self._get_connection() as conn:
             rows = conn.execute(
                 "SELECT member_xuid FROM clan_members WHERE owner_xuid = ?",
@@ -97,7 +97,7 @@ class _Database:
             ).fetchall()
         return {row[0] for row in rows}
 
-    def get_member_clans(self, member_xuid: int) -> list[tuple[int, str, str]]:
+    def _get_member_clans(self, member_xuid: int) -> list[tuple[int, str, str]]:
         with self._get_connection() as conn:
             return conn.execute("""
                 SELECT c.owner_xuid, c.clean_name, c.display_name
@@ -106,7 +106,7 @@ class _Database:
                 WHERE m.member_xuid = ?
             """, (member_xuid,)).fetchall()
 
-    def update_clan(
+    def _update_clan(
         self,
         owner_xuid: int,
         display_name: str | None = None
@@ -120,12 +120,12 @@ class _Database:
                 )
                 conn.commit()
 
-    def delete_clan(self, owner_xuid: int) -> None:
+    def _delete_clan(self, owner_xuid: int) -> None:
         with self._get_connection() as conn:
             conn.execute("DELETE FROM clans WHERE owner_xuid = ?", (owner_xuid,))
             conn.commit()
 
-    def add_member(self, owner_xuid: int, member_xuid: int) -> None:
+    def _add_member(self, owner_xuid: int, member_xuid: int) -> None:
         with self._get_connection() as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO clan_members (owner_xuid, member_xuid) VALUES (?, ?)",
@@ -133,7 +133,7 @@ class _Database:
             )
             conn.commit()
 
-    def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
+    def _remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         with self._get_connection() as conn:
             conn.execute(
                 "DELETE FROM clan_members WHERE owner_xuid = ? AND member_xuid = ?",
