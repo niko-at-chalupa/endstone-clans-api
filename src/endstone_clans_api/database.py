@@ -5,6 +5,30 @@ from .types import Clan
 from .etc import remove_minecraft_formatting
 from typing import Optional
 
+class Database(ABC):
+    #@abstractmethod
+    #def create_clan(self, name: str, owner_xuid: int) -> None:
+    #    ...
+    # Let's not expose this for now
+
+    @abstractmethod
+    def get_clan(self, name: str) -> Clan:
+        ...
+    
+    @abstractmethod
+    def get_clan_by_xuid(self, name: str) -> Clan:
+        ...
+
+    @abstractmethod
+    def get_members_xuids(self, owner_xuid: int) -> set[int]:
+        ...
+
+    @abstractmethod
+    def get_member_clans(self, member_xuid: int) -> Clan:
+        # Only one clan per player should be allowed. Of course, that means
+        # they can only own one clan, or be in one clan.
+        ...
+
 # The following was assisted by Claude
 class _Database:
     def __init__(self, db_path: Path) -> None:
