@@ -35,7 +35,7 @@ class ClansApiPlugin(Plugin):
     permissions = {
         "clans-api.command": {
             "description": "Base permission for all endstone clans API commands",
-            "default": "op",
+            "default": True,
         }
     }
 
