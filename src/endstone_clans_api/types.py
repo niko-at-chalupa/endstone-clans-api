@@ -76,3 +76,8 @@ class _Clan(Clan):
     @property
     def members_xuids(self) -> set[int]:
         return self._members_xuids
+
+    @classmethod
+    def _from_db(cls, plugin: 'ClansApiPlugin', row: tuple):
+        owner_xuid, _name, display_name = row[:3]
+        return cls(plugin, display_name, owner_xuid)
