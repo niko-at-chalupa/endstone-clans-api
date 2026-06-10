@@ -24,7 +24,7 @@ class Database(ABC):
         ...
 
     @abstractmethod
-    def get_member_clans(self, member_xuid: int) -> Clan:
+    def get_member_clan(self, member_xuid: int) -> Optional[Clan]:
         # Only one clan per player should be allowed. Of course, that means
         # they can only own one clan, or be in one clan.
         ...
@@ -54,7 +54,7 @@ class _Database:
             conn.execute("""
                 CREATE TABLE clan_members (
                     owner_xuid INTEGER NOT NULL,
-                    member_xuid INTEGER NOT NULL,
+                    member_xuid INTEGER NOT NULL UNIQUE,
                     PRIMARY KEY(owner_xuid, member_xuid),
                     FOREIGN KEY(owner_xuid) REFERENCES clans(owner_xuid) ON DELETE CASCADE
                 )
@@ -97,14 +97,14 @@ class _Database:
             ).fetchall()
         return {row[0] for row in rows}
 
-    def _get_member_clans(self, member_xuid: int) -> list[tuple[int, str, str]]:
+    def _get_member_clan(self, member_xuid: int) -> Optional[tuple[int, str, str]]:
         with self._get_connection() as conn:
             return conn.execute("""
                 SELECT c.owner_xuid, c.clean_name, c.display_name
                 FROM clans c
                 JOIN clan_members m ON c.owner_xuid = m.owner_xuid
                 WHERE m.member_xuid = ?
-            """, (member_xuid,)).fetchall()
+            """, (member_xuid,)).fetchone()
 
     def _update_clan(
         self,
