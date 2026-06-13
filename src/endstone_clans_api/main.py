@@ -41,13 +41,15 @@ class ClansApiPlugin(Plugin):
         }
     }
 
+    def on_load(self):
+        self._api = ClansApi(self)
+
     def on_enable(self):
         self.data_folder.mkdir(exist_ok=True)
         self._config = self._load_config()
         self._db = _Database(self, self.data_folder / "clans.db")
         self.register_events(self)
         self.clans_commands = ClansCommands(self)
-        self._api = ClansApi(self)
 
     def on_command(self, sender: CommandSender, command: Command, args: list[str]) -> bool:
         if command.name != "clan":
