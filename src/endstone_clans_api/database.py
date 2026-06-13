@@ -77,14 +77,15 @@ class _Database(Database):
         self._delete_clan(owner_xuid)
 
     def rename_clan(self, owner_xuid: int, new_name: str) -> None:
-        self._validate_name_availability(new_name)
+        self._validate_name_availability(new_name, exclude_owner_xuid=owner_xuid)
         self._update_clan(owner_xuid, display_name=new_name)
 
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         self._remove_member(owner_xuid, member_xuid)
 
-    def _validate_name_availability(self, name: str) -> None:
-        if self.get_clan(name):
+    def _validate_name_availability(self, name: str, exclude_owner_xuid: Optional[int] = None) -> None:
+        existing_clan = self.get_clan(name)
+        if existing_clan and existing_clan.owner_xuid != exclude_owner_xuid:
             raise RuntimeError(f"Clan name '{name}' is already taken.")
 
     def _get_connection(self) -> sqlite3.Connection:
