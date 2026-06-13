@@ -57,6 +57,10 @@ class ClansApiPlugin(Plugin):
         self.register_events(self)
         self.clans_commands = ClansCommands(self)
 
+    def on_disable(self):
+        if hasattr(self, "_db"):
+            self._db.close()
+
     @property
     def invite_cooldowns(self) -> dict[tuple[str, str], float]:
         return self._invite_cooldowns

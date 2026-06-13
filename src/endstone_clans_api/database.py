@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 from pathlib import Path
 from abc import ABC, abstractmethod
 from .types import Clan
@@ -9,6 +10,10 @@ if TYPE_CHECKING:
     from .main import ClansApiPlugin
 
 class Database(ABC):
+    @abstractmethod
+    def close(self) -> None:
+        ...
+
     @abstractmethod
     def create_clan(self, name: str, owner_xuid: int) -> None:
         ...
@@ -60,83 +65,99 @@ class _Database(Database):
     def __init__(self, plugin: 'ClansApiPlugin', db_path: Path) -> None:
         self.plugin = plugin
         self.db_path = db_path
+        self._lock = threading.Lock()
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self._conn.execute("PRAGMA foreign_keys = ON")
         self._init_db()
 
+    def close(self) -> None:
+        with self._lock:
+            self._conn.close()
+
     def create_clan(self, name: str, owner_xuid: int) -> None:
-        self._validate_name_availability(name)
-        self._create_clan(name, owner_xuid)
+        with self._lock:
+            self._validate_name_availability(name)
+            self._create_clan(name, owner_xuid)
 
     def get_clan(self, name: str) -> Optional[Clan]:
         from .types import _Clan
         clean_name = remove_minecraft_formatting(name).lower()
-        row = self._get_clan(clean_name)
+        with self._lock:
+            row = self._get_clan(clean_name)
         return _Clan._from_db(self.plugin, row) if row else None
 
     def get_clan_by_xuid(self, xuid: int) -> Optional[Clan]:
         from .types import _Clan
-        row = self._get_clan_by_xuid(xuid)
+        with self._lock:
+            row = self._get_clan_by_xuid(xuid)
         return _Clan._from_db(self.plugin, row) if row else None
 
     def get_members_xuids(self, owner_xuid: int) -> set[int]:
-        return self._get_members_xuids(owner_xuid)
+        with self._lock:
+            return self._get_members_xuids(owner_xuid)
 
     def get_member_clan(self, member_xuid: int) -> Optional[Clan]:
         from .types import _Clan
-        row = self._get_member_clan(member_xuid)
+        with self._lock:
+            row = self._get_member_clan(member_xuid)
         return _Clan._from_db(self.plugin, row) if row else None
 
     def delete_clan(self, owner_xuid: int) -> None:
-        self._delete_clan(owner_xuid)
+        with self._lock:
+            self._delete_clan(owner_xuid)
 
     def rename_clan(self, owner_xuid: int, new_name: str) -> None:
-        self._validate_name_availability(new_name, exclude_owner_xuid=owner_xuid)
-        self._update_clan(owner_xuid, display_name=new_name)
+        with self._lock:
+            self._validate_name_availability(new_name, exclude_owner_xuid=owner_xuid)
+            self._update_clan(owner_xuid, display_name=new_name)
 
     def add_member(self, owner_xuid: int, member_xuid: int) -> None:
-        self._add_member(owner_xuid, member_xuid)
+        with self._lock:
+            self._add_member(owner_xuid, member_xuid)
 
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
-        self._remove_member(owner_xuid, member_xuid)
+        with self._lock:
+            self._remove_member(owner_xuid, member_xuid)
 
     def set_player_preference(self, xuid: int, key: str, value: str) -> None:
-        with self._get_connection() as conn:
-            conn.execute(
+        with self._lock:
+            self._conn.execute(
                 "INSERT OR REPLACE INTO player_preferences (xuid, key, value) VALUES (?, ?, ?)",
                 (xuid, key, value)
             )
-            conn.commit()
+            self._conn.commit()
 
     def get_player_preference(self, xuid: int, key: str) -> Optional[str]:
-        with self._get_connection() as conn:
-            row = conn.execute(
+        with self._lock:
+            row = self._conn.execute(
                 "SELECT value FROM player_preferences WHERE xuid = ? AND key = ?",
                 (xuid, key)
             ).fetchone()
             return row[0] if row else None
 
     def _validate_name_availability(self, name: str, exclude_owner_xuid: Optional[int] = None) -> None:
-        existing_clan = self.get_clan(name)
+        # Note: This is called within a lock already from public methods
+        from .types import _Clan
+        clean_name = remove_minecraft_formatting(name).lower()
+        row = self._get_clan(clean_name)
+        existing_clan = _Clan._from_db(self.plugin, row) if row else None
+        
         if existing_clan and existing_clan.owner_xuid != exclude_owner_xuid:
             raise RuntimeError(f"Clan name '{name}' is already taken.")
 
-    def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
-
     def _init_db(self) -> None:
-        with self._get_connection() as conn:
+        with self._lock:
             # Cleanup old table if it exists
-            conn.execute("DROP TABLE IF EXISTS members")
+            self._conn.execute("DROP TABLE IF EXISTS members")
             
-            conn.execute("""
+            self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS clans (
                     owner_xuid INTEGER PRIMARY KEY,
                     clean_name TEXT UNIQUE NOT NULL,
                     display_name TEXT NOT NULL
                 )
             """)
-            conn.execute("""
+            self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS clan_members (
                     owner_xuid INTEGER NOT NULL,
                     member_xuid INTEGER NOT NULL UNIQUE,
@@ -144,7 +165,7 @@ class _Database(Database):
                     FOREIGN KEY(owner_xuid) REFERENCES clans(owner_xuid) ON DELETE CASCADE
                 )
             """)
-            conn.execute("""
+            self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS player_preferences (
                     xuid INTEGER NOT NULL,
                     key TEXT NOT NULL,
@@ -152,84 +173,75 @@ class _Database(Database):
                     PRIMARY KEY(xuid, key)
                 )
             """)
-            conn.commit()
+            self._conn.commit()
 
     def _create_clan(self, display_name: str, owner_xuid: int) -> None:
         clean_name = remove_minecraft_formatting(display_name).lower()
-        with self._get_connection() as conn:
-            conn.execute(
-                "INSERT INTO clans (owner_xuid, clean_name, display_name) VALUES (?, ?, ?)",
-                (owner_xuid, clean_name, display_name)
-            )
-            # Add owner as a member
-            conn.execute(
-                "INSERT INTO clan_members (owner_xuid, member_xuid) VALUES (?, ?)",
-                (owner_xuid, owner_xuid)
-            )
-            conn.commit()
+        self._conn.execute(
+            "INSERT INTO clans (owner_xuid, clean_name, display_name) VALUES (?, ?, ?)",
+            (owner_xuid, clean_name, display_name)
+        )
+        # Add owner as a member
+        self._conn.execute(
+            "INSERT INTO clan_members (owner_xuid, member_xuid) VALUES (?, ?)",
+            (owner_xuid, owner_xuid)
+        )
+        self._conn.commit()
 
     def _get_clan(self, clean_name: str) -> Optional[tuple[int, str, str]]:
-        with self._get_connection() as conn:
-            return conn.execute(
-                "SELECT owner_xuid, clean_name, display_name FROM clans WHERE clean_name = ?",
-                (clean_name,)
-            ).fetchone()
+        return self._conn.execute(
+            "SELECT owner_xuid, clean_name, display_name FROM clans WHERE clean_name = ?",
+            (clean_name,)
+        ).fetchone()
 
     def _get_clan_by_xuid(self, owner_xuid: int) -> Optional[tuple[int, str, str]]:
-        with self._get_connection() as conn:
-            return conn.execute(
-                "SELECT owner_xuid, clean_name, display_name FROM clans WHERE owner_xuid = ?",
-                (owner_xuid,)
-            ).fetchone()
+        return self._conn.execute(
+            "SELECT owner_xuid, clean_name, display_name FROM clans WHERE owner_xuid = ?",
+            (owner_xuid,)
+        ).fetchone()
 
     def _get_members_xuids(self, owner_xuid: int) -> set[int]:
-        with self._get_connection() as conn:
-            rows = conn.execute(
-                "SELECT member_xuid FROM clan_members WHERE owner_xuid = ?",
-                (owner_xuid,)
-            ).fetchall()
+        rows = self._conn.execute(
+            "SELECT member_xuid FROM clan_members WHERE owner_xuid = ?",
+            (owner_xuid,)
+        ).fetchall()
         return {row[0] for row in rows}
 
     def _get_member_clan(self, member_xuid: int) -> Optional[tuple[int, str, str]]:
-        with self._get_connection() as conn:
-            return conn.execute("""
-                SELECT c.owner_xuid, c.clean_name, c.display_name
-                FROM clans c
-                JOIN clan_members m ON c.owner_xuid = m.owner_xuid
-                WHERE m.member_xuid = ?
-            """, (member_xuid,)).fetchone()
+        return self._conn.execute("""
+            SELECT c.owner_xuid, c.clean_name, c.display_name
+            FROM clans c
+            JOIN clan_members m ON c.owner_xuid = m.owner_xuid
+            WHERE m.member_xuid = ?
+        """, (member_xuid,)).fetchone()
 
     def _update_clan(
         self,
         owner_xuid: int,
         display_name: str | None = None
     ) -> None:
-        with self._get_connection() as conn:
-            if display_name is not None:
-                clean_name = remove_minecraft_formatting(display_name).lower()
-                conn.execute(
-                    "UPDATE clans SET clean_name = ?, display_name = ? WHERE owner_xuid = ?",
-                    (clean_name, display_name, owner_xuid)
-                )
-                conn.commit()
+        if display_name is not None:
+            clean_name = remove_minecraft_formatting(display_name).lower()
+            self._conn.execute(
+                "UPDATE clans SET clean_name = ?, display_name = ? WHERE owner_xuid = ?",
+                (clean_name, display_name, owner_xuid)
+            )
+            self._conn.commit()
 
     def _delete_clan(self, owner_xuid: int) -> None:
-        with self._get_connection() as conn:
-            conn.execute("DELETE FROM clans WHERE owner_xuid = ?", (owner_xuid,))
-            conn.commit()
+        self._conn.execute("DELETE FROM clans WHERE owner_xuid = ?", (owner_xuid,))
+        self._conn.commit()
 
     def _add_member(self, owner_xuid: int, member_xuid: int) -> None:
-        with self._get_connection() as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO clan_members (owner_xuid, member_xuid) VALUES (?, ?)",
-                (owner_xuid, member_xuid)
-            )
-            conn.commit()
+        self._conn.execute(
+            "INSERT OR IGNORE INTO clan_members (owner_xuid, member_xuid) VALUES (?, ?)",
+            (owner_xuid, member_xuid)
+        )
+        self._conn.commit()
 
     def _remove_member(self, owner_xuid: int, member_xuid: int) -> None:
-        with self._get_connection() as conn:
-            conn.execute(
-                "DELETE FROM clan_members WHERE owner_xuid = ? AND member_xuid = ?",
-                (owner_xuid, member_xuid)
-            )
-            conn.commit()
+        self._conn.execute(
+            "DELETE FROM clan_members WHERE owner_xuid = ? AND member_xuid = ?",
+            (owner_xuid, member_xuid)
+        )
+        self._conn.commit()
