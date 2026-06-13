@@ -1,6 +1,6 @@
 from endstone import Logger
 from endstone.scheduler import Scheduler
-from endstone.form import MessageForm
+from endstone.form import MessageForm, ModalForm, Toggle
 from endstone_clans_api.database import Database
 from abc import ABC
 from typing import TYPE_CHECKING, Callable, TypeVar
@@ -10,6 +10,7 @@ from endstone import Player
 from typing import Awaitable
 import concurrent.futures
 import time
+import json
 
 if TYPE_CHECKING:
     from .main import ClansConfig, ClansApiPlugin
@@ -31,7 +32,7 @@ class Subcommands(ABC):
 
     @property
     def messages(self) -> dict[str, str]:
-        return self.config.messages
+        return self.plugin.config.messages
 
     @property
     def db(self) -> Database:
@@ -58,9 +59,9 @@ class Subcommands(ABC):
 
 class ClansCommands(Subcommands):
     def help(self, sender: CommandSender, command: Command, args: list[str]):
-        help_messages = self.config.help
+        help_messages = self.plugin.config.help
 
-        sender.send_message(self.plugin.config.messages.get("help_header", ""))
+        sender.send_message(self.messages.get("help_header", ""))
         for subcommand in self.subcommand_map:
             if subcommand in help_messages:
                 description = help_messages.get(subcommand)
@@ -89,16 +90,13 @@ class ClansCommands(Subcommands):
                     self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("already_in_clan", "already in clan")))
                     return
 
-                existing_clan = self.db.get_clan(clan_name)
-                if existing_clan:
-                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("clan_name_taken", "clan name taken")))
-                    return
-
-                self.db.create_clan(clan_name, xuid)
-                
-                msg = self.messages.get("clan_created", "clan created")
-                msg = msg.replace("[clan_name]", clan_name)
-                self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
+                try:
+                    self.db.create_clan(clan_name, xuid)
+                    msg = self.messages.get("clan_created", "clan created")
+                    msg = msg.replace("[clan_name]", clan_name)
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
+                except RuntimeError as e:
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(str(e)))
             except Exception as e:
                 # What is the point
                 raise e
@@ -145,6 +143,46 @@ class ClansCommands(Subcommands):
         self._submit_and_handle_future_result(rename_task())
         return True
 
+    def config_command(self, sender: CommandSender, command: Command, args: list[str]):
+        if not isinstance(sender, Player):
+            sender.send_error_message(self.messages.get("not_a_player", "Only players can use this command."))
+            return True
+
+        player = sender
+
+        async def config_task():
+            xuid = int(player.xuid)
+            # Default to "true" if not set
+            allow_invites_str = self.db.get_player_preference(xuid, "allow_invites")
+            allow_invites = allow_invites_str.lower() == "true" if allow_invites_str else True
+
+            def on_form_submit(p: Player, data_json: str):
+                try:
+                    data = json.loads(data_json)
+                    new_allow_invites = data[0]
+                    
+                    async def save_task():
+                        self.db.set_player_preference(int(p.xuid), "allow_invites", str(new_allow_invites).lower())
+                        self.scheduler.run_task(self.plugin, lambda: p.send_message(self.plugin.config.config_form.get("success", "Preferences updated!")))
+                    
+                    submit(save_task())
+                except Exception as e:
+                    self.logger.error(f"Error handling config form submission: {e}")
+
+            form = ModalForm(
+                title=self.plugin.config.config_form.get("title", "Clan Preferences"),
+                on_submit=on_form_submit
+            )
+            form.add_control(Toggle(
+                label=self.plugin.config.config_form.get("allow_invites", "Allow Clan Invitations"), 
+                default_value=allow_invites
+            ))
+            
+            self.scheduler.run_task(self.plugin, lambda: player.send_form(form))
+
+        submit(config_task())
+        return True
+
     def invite(self, sender: CommandSender, command: Command, args: list[str]):
         if not isinstance(sender, Player):
             sender.send_error_message(self.messages.get("not_a_player", "Only players can use this command."))
@@ -185,10 +223,19 @@ class ClansCommands(Subcommands):
                     self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
                     return
 
+                # Check privacy settings
+                allow_invites_str = self.db.get_player_preference(target_xuid, "allow_invites")
+                allow_invites = allow_invites_str.lower() == "true" if allow_invites_str else True
+                if not allow_invites:
+                    msg = self.messages.get("privacy_no_invites", "[player_name] does not allow clan invitations.")
+                    msg = msg.replace("[player_name]", target.name)
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
+                    return
+
                 cooldown_key = (str(xuid), str(target_xuid))
                 now = time.time()
                 if cooldown_key in self.plugin.invite_cooldowns:
-                    if now - self.plugin.invite_cooldowns[cooldown_key] < self.config.invite_cooldown:
+                    if now - self.plugin.invite_cooldowns[cooldown_key] < self.plugin.config.invite_cooldown:
                         msg = self.messages.get("invite_cooldown", "You must wait before inviting [player_name] again.")
                         msg = msg.replace("[player_name]", target.name)
                         self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
@@ -288,6 +335,7 @@ class ClansCommands(Subcommands):
             "help": self.help,
             "create": self.create,
             "rename": self.rename,
+            "config": self.config_command,
             "invite": self.invite,
             "kick": self.kick,
             "leave": self.leave,

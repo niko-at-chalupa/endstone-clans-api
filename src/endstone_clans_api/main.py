@@ -13,6 +13,7 @@ from .api import ClansApi
 class ClansConfig(BaseModel):
     messages: dict[str, str] = Field(default_factory=dict)
     help: dict[str, str] = Field(default_factory=dict)
+    config_form: dict[str, str] = Field(default_factory=dict)
     invite_cooldown: int = 600
 
 class ClansApiPlugin(Plugin):
@@ -29,6 +30,7 @@ class ClansApiPlugin(Plugin):
                 "/clan help",
                 "/clan create <name: str>",
                 "/clan rename <name: str>",
+                "/clan config",
                 "/clan invite <player: player>",
                 "/clan kick <player: player>",
                 "/clan leave",
@@ -134,11 +136,17 @@ class ClansApiPlugin(Plugin):
             ("messages.invite_accepted", "You have joined [clan_name]!", "Message shown when a player accepts an invitation"),
             ("messages.invite_declined", "[player_name] declined your invitation.", "Message shown when a player declines an invitation"),
             ("messages.player_already_in_clan", "[player_name] is already in a clan.", "Message shown when inviting someone already in a clan"),
+            ("messages.privacy_no_invites", "[player_name] does not allow clan invitations.", "Message shown when inviting someone who disabled invites"),
+
+            ("config_form.title", "Clan Preferences", "Title of the player preferences form"),
+            ("config_form.allow_invites", "Allow Clan Invitations", "Toggle label for invitations"),
+            ("config_form.success", "Your preferences have been updated!", "Message shown when preferences are saved"),
 
             # Everything underneath the help.* namespace is the help description for the
             # command specified.
             ("help.help", "Show this help message", "/clan help"),
             ("help.rename", "Rename a clan. Example: /clan rename \"my old clan\" \"my new one\"", "/clan rename"),
+            ("help.config", "Open the clan preferences menu", "/clan config"),
             ("help.invite", "Invite a player to your clan", "/clan invite"),
             ("help.kick", "Remote a player from your clan", "/clan kick"),
             ("help.leave", "Makes you leave the clan you're in. If you're the owner of the clan you leave, then the clan will be deleted.", "/clan leave")

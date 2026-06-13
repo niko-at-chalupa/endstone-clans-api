@@ -47,6 +47,14 @@ class Database(ABC):
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         ...
 
+    @abstractmethod
+    def set_player_preference(self, xuid: int, key: str, value: str) -> None:
+        ...
+
+    @abstractmethod
+    def get_player_preference(self, xuid: int, key: str) -> Optional[str]:
+        ...
+
 # The following was assisted by Claude
 class _Database(Database):
     def __init__(self, plugin: 'ClansApiPlugin', db_path: Path) -> None:
@@ -90,6 +98,22 @@ class _Database(Database):
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         self._remove_member(owner_xuid, member_xuid)
 
+    def set_player_preference(self, xuid: int, key: str, value: str) -> None:
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO player_preferences (xuid, key, value) VALUES (?, ?, ?)",
+                (xuid, key, value)
+            )
+            conn.commit()
+
+    def get_player_preference(self, xuid: int, key: str) -> Optional[str]:
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT value FROM player_preferences WHERE xuid = ? AND key = ?",
+                (xuid, key)
+            ).fetchone()
+            return row[0] if row else None
+
     def _validate_name_availability(self, name: str, exclude_owner_xuid: Optional[int] = None) -> None:
         existing_clan = self.get_clan(name)
         if existing_clan and existing_clan.owner_xuid != exclude_owner_xuid:
@@ -118,6 +142,14 @@ class _Database(Database):
                     member_xuid INTEGER NOT NULL UNIQUE,
                     PRIMARY KEY(owner_xuid, member_xuid),
                     FOREIGN KEY(owner_xuid) REFERENCES clans(owner_xuid) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS player_preferences (
+                    xuid INTEGER NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    PRIMARY KEY(xuid, key)
                 )
             """)
             conn.commit()
