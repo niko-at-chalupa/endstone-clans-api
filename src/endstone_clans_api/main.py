@@ -12,11 +12,13 @@ from .api import ClansApi
 class ClansConfig(BaseModel):
     messages: dict[str, str] = Field(default_factory=dict)
     help: dict[str, str] = Field(default_factory=dict)
+    invite_cooldown: int = 600
 
 class ClansApiPlugin(Plugin):
     api_version = "0.11"
     _config: ClansConfig
     _api: ClansApi | None = None
+    _invite_cooldowns: dict[tuple[str, str], float] = {}  # (inviter_xuid, target_xuid) -> timestamp
 
     commands = {
         "clan": {
@@ -48,8 +50,13 @@ class ClansApiPlugin(Plugin):
         self.data_folder.mkdir(exist_ok=True)
         self._config = self._load_config()
         self._db = _Database(self, self.data_folder / "clans.db")
+        self._invite_cooldowns = {}
         self.register_events(self)
         self.clans_commands = ClansCommands(self)
+
+    @property
+    def invite_cooldowns(self) -> dict[tuple[str, str], float]:
+        return self._invite_cooldowns
 
     def on_command(self, sender: CommandSender, command: Command, args: list[str]) -> bool:
         if command.name != "clan":
@@ -98,6 +105,7 @@ class ClansApiPlugin(Plugin):
         yml.preserve_quotes = False
         
         defaults = [
+            ("invite_cooldown", 600, "The duration of invitation cooldown in seconds"),
             ("messages.no_permission", "You do not have permission to use this command.", "Message shown when a player lacks permission"),
             ("messages.clan_created", "Clan [clan_name] has been successfully created!", "Message shown when a clan is created"),
             ("messages.no_subcommand", "No subcommand was provided. Try /clans help.", "Shown when /clans is used with no arguments"),
@@ -114,6 +122,16 @@ class ClansApiPlugin(Plugin):
             ("messages.not_in_a_clan", "You are NOT in a clan!!", "Message shown when player attempts to do a clan-related action when NOT in a clan."),
             ("messages.not_the_owner", "You're NOT the owner of the clan!!", "Message shown when player attempts to do a clan-related action when NOT the owner."),
             ("messages.clan_name_already_taken", "That name is already taken!", "Message shown to players if a clan name is already taken."),
+            ("messages.player_not_found", "Player [player_name] not found.", "Message shown when a player is not online"),
+            ("messages.invite_sent", "Invitation sent to [player_name].", "Message shown when an invitation is sent"),
+            ("messages.invite_received_title", "Clan Invitation", "Title of the invitation form"),
+            ("messages.invite_received_content", "[player_name] invited you to join [clan_name].", "Content of the invitation form"),
+            ("messages.invite_yes", "Yes", "Accept button text"),
+            ("messages.invite_no", "No", "Decline button text"),
+            ("messages.invite_cooldown", "You must wait before inviting [player_name] again.", "Message shown when an invitation is on cooldown"),
+            ("messages.invite_accepted", "You have joined [clan_name]!", "Message shown when a player accepts an invitation"),
+            ("messages.invite_declined", "[player_name] declined your invitation.", "Message shown when a player declines an invitation"),
+            ("messages.player_already_in_clan", "[player_name] is already in a clan.", "Message shown when inviting someone already in a clan"),
 
             # Everything underneath the help.* namespace is the help description for the
             # command specified.

@@ -40,6 +40,10 @@ class Database(ABC):
         ...
 
     @abstractmethod
+    def add_member(self, owner_xuid: int, member_xuid: int) -> None:
+        ...
+
+    @abstractmethod
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         ...
 
@@ -79,6 +83,9 @@ class _Database(Database):
     def rename_clan(self, owner_xuid: int, new_name: str) -> None:
         self._validate_name_availability(new_name, exclude_owner_xuid=owner_xuid)
         self._update_clan(owner_xuid, display_name=new_name)
+
+    def add_member(self, owner_xuid: int, member_xuid: int) -> None:
+        self._add_member(owner_xuid, member_xuid)
 
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         self._remove_member(owner_xuid, member_xuid)

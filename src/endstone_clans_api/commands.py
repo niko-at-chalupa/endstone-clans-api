@@ -1,16 +1,20 @@
 from endstone import Logger
 from endstone.scheduler import Scheduler
+from endstone.form import MessageForm
 from endstone_clans_api.database import Database
 from abc import ABC
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, TypeVar
 from endstone.command import CommandSender, Command
 from endstone.asyncio import get_loop, submit
 from endstone import Player
 from typing import Awaitable
 import concurrent.futures
+import time
 
 if TYPE_CHECKING:
     from .main import ClansConfig, ClansApiPlugin
+
+_T = TypeVar("_T")
 
 class Subcommands(ABC):
     # def a_function(self, sender: CommandSender, command: Command, args: list[str]) -> bool: ...
@@ -133,7 +137,99 @@ class ClansCommands(Subcommands):
         self._submit_and_handle_future_result(rename_task())
 
     def invite(self, sender: CommandSender, command: Command, args: list[str]):
-        raise NotImplementedError
+        if not isinstance(sender, Player):
+            sender.send_error_message(self.messages.get("not_a_player", "Only players can use this command."))
+            return True
+
+        if len(args) == 0:
+            sender.send_error_message(self.messages.get("usage_invite", "Usage: /clan invite <player: player>"))
+            return True
+
+        target_name = args[0]
+        target = self.plugin.server.get_player(target_name)
+        if not target:
+            msg = self.messages.get("player_not_found", "Player [player_name] not found.")
+            msg = msg.replace("[player_name]", target_name)
+            sender.send_error_message(msg)
+            return True
+
+        player = sender
+
+        async def invite_task():
+            try:
+                xuid = int(player.xuid)
+                clan = self.db.get_member_clan(xuid)
+                
+                if not clan:
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_in_clan", "not in clan")))
+                    return
+
+                if clan.owner_xuid != xuid:
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_the_owner", "not the owner")))
+                    return
+
+                target_xuid = int(target.xuid)
+                target_clan = self.db.get_member_clan(target_xuid)
+                if target_clan:
+                    msg = self.messages.get("player_already_in_clan", "[player_name] is already in a clan.")
+                    msg = msg.replace("[player_name]", target.name)
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
+                    return
+
+                cooldown_key = (str(xuid), str(target_xuid))
+                now = time.time()
+                if cooldown_key in self.plugin.invite_cooldowns:
+                    if now - self.plugin.invite_cooldowns[cooldown_key] < 600:
+                        msg = self.messages.get("invite_cooldown", "You must wait before inviting [player_name] again.")
+                        msg = msg.replace("[player_name]", target.name)
+                        self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
+                        return
+
+                def on_form_submit(p: Player, index: int):
+                    if index == 0:
+                        async def accept_task():
+                            if self.db.get_member_clan(int(p.xuid)):
+                                return
+                            
+                            self.db.add_member(clan.owner_xuid, int(p.xuid))
+                            msg = self.messages.get("invite_accepted", "You have joined [clan_name]!")
+                            msg = msg.replace("[clan_name]", clan.display_name)
+                            p.send_message(msg)
+                            
+                            inviter = self.plugin.server.get_player(player.name)
+                            if inviter:
+                                inviter.send_message(f"{p.name} joined your clan.")
+                        
+                        submit(accept_task())
+                    else:
+                        self.plugin.invite_cooldowns[cooldown_key] = time.time()
+                        msg = self.messages.get("invite_declined", "[player_name] declined your invitation.")
+                        msg = msg.replace("[player_name]", p.name)
+                        inviter = self.plugin.server.get_player(player.name)
+                        if inviter:
+                            inviter.send_message(msg)
+
+                form = MessageForm(
+                    title=self.messages.get("invite_received_title", "Clan Invitation"),
+                    content=self.messages.get("invite_received_content", "[player_name] invited you to join [clan_name].")
+                    .replace("[player_name]", player.name)
+                    .replace("[clan_name]", clan.display_name),
+                    button1=self.messages.get("invite_yes", "Yes"),
+                    button2=self.messages.get("invite_no", "No"),
+                    on_submit=on_form_submit
+                )
+                
+                self.scheduler.run_task(self.plugin, lambda: target.send_form(form))
+                
+                msg = self.messages.get("invite_sent", "Invitation sent to [player_name].")
+                msg = msg.replace("[player_name]", target.name)
+                self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
+
+            except Exception as e:
+                raise e
+
+        self._submit_and_handle_future_result(invite_task())
+        return True
 
     def kick(self, sender: CommandSender, command: Command, args: list[str]):
         raise NotImplementedError
