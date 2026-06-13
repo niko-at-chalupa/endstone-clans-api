@@ -5,7 +5,7 @@ from endstone_clans_api.database import Database
 from abc import ABC
 from typing import TYPE_CHECKING, Callable, TypeVar
 from endstone.command import CommandSender, Command
-from endstone.asyncio import get_loop, submit
+from endstone.asyncio import submit
 from endstone import Player
 from typing import Awaitable
 import concurrent.futures
@@ -118,22 +118,29 @@ class ClansCommands(Subcommands):
         player = sender
 
         async def rename_task():
-            clan = self.db.get_clan_by_xuid(int(player.xuid))
-            
-            if not clan:
-                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_in_a_clan", "not in a clan")))
-                return
-
-            if clan.owner_xuid != player.xuid:
-                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_the_owner", "not the owner")))
-                return
-
             try:
-                self.db.rename_clan(clan.owner_xuid, args[0])
-                return True
-            except RuntimeError:
-                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("clan_name_already_taken", "clan name already taken")))
-                return
+                xuid = int(player.xuid)
+                clan = self.db.get_member_clan(xuid)
+                
+                if not clan:
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_in_clan", "not in clan")))
+                    return
+
+                if clan.owner_xuid != xuid:
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_the_owner", "not the owner")))
+                    return
+
+                try:
+                    new_name = " ".join(args)
+                    self.db.rename_clan(xuid, new_name)
+                    msg = self.messages.get("clan_renamed", "clan renamed to [clan_name]")
+                    msg = msg.replace("[clan_name]", new_name)
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
+                except RuntimeError as e:
+                    self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(str(e)))
+                    
+            except Exception as e:
+                raise e
 
         self._submit_and_handle_future_result(rename_task())
         return True
@@ -194,22 +201,30 @@ class ClansCommands(Subcommands):
                                 return
                             
                             self.db.add_member(clan.owner_xuid, int(p.xuid))
-                            msg = self.messages.get("invite_accepted", "You have joined [clan_name]!")
-                            msg = msg.replace("[clan_name]", clan.display_name)
-                            p.send_message(msg)
                             
-                            inviter = self.plugin.server.get_player(player.name)
-                            if inviter:
-                                inviter.send_message(f"{p.name} joined your clan.")
+                            def finalize_acceptance():
+                                msg = self.messages.get("invite_accepted", "You have joined [clan_name]!")
+                                msg = msg.replace("[clan_name]", clan.display_name)
+                                p.send_message(msg)
+                                
+                                inviter = self.plugin.server.get_player(player.name)
+                                if inviter:
+                                    inviter.send_message(f"{p.name} joined your clan.")
+                                    
+                            self.scheduler.run_task(self.plugin, finalize_acceptance)
                         
                         submit(accept_task())
                     else:
                         self.plugin.invite_cooldowns[cooldown_key] = time.time()
-                        msg = self.messages.get("invite_declined", "[player_name] declined your invitation.")
-                        msg = msg.replace("[player_name]", p.name)
-                        inviter = self.plugin.server.get_player(player.name)
-                        if inviter:
-                            inviter.send_message(msg)
+                        
+                        def notify_decline():
+                            msg = self.messages.get("invite_declined", "[player_name] declined your invitation.")
+                            msg = msg.replace("[player_name]", p.name)
+                            inviter = self.plugin.server.get_player(player.name)
+                            if inviter:
+                                inviter.send_message(msg)
+                                
+                        self.scheduler.run_task(self.plugin, notify_decline)
 
                 form = MessageForm(
                     title=self.messages.get("invite_received_title", "Clan Invitation"),
