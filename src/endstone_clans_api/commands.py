@@ -130,11 +130,13 @@ class ClansCommands(Subcommands):
 
             try:
                 self.db.rename_clan(clan.owner_xuid, args[0])
+                return True
             except RuntimeError:
                 self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("clan_name_already_taken", "clan name already taken")))
                 return
 
         self._submit_and_handle_future_result(rename_task())
+        return True
 
     def invite(self, sender: CommandSender, command: Command, args: list[str]):
         if not isinstance(sender, Player):
@@ -179,7 +181,7 @@ class ClansCommands(Subcommands):
                 cooldown_key = (str(xuid), str(target_xuid))
                 now = time.time()
                 if cooldown_key in self.plugin.invite_cooldowns:
-                    if now - self.plugin.invite_cooldowns[cooldown_key] < 600:
+                    if now - self.plugin.invite_cooldowns[cooldown_key] < self.config.invite_cooldown:
                         msg = self.messages.get("invite_cooldown", "You must wait before inviting [player_name] again.")
                         msg = msg.replace("[player_name]", target.name)
                         self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
