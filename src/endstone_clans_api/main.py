@@ -16,6 +16,7 @@ class ClansConfig(BaseModel):
 class ClansApiPlugin(Plugin):
     api_version = "0.11"
     _config: ClansConfig
+    _api: ClansApi | None = None
 
     commands = {
         "clan": {
@@ -78,7 +79,7 @@ class ClansApiPlugin(Plugin):
         return self._config
 
     @property
-    def api(self) -> ClansApi:
+    def api(self) -> ClansApi | None:
         return self._api
 
     @property
