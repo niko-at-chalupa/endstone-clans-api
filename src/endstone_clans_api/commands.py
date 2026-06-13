@@ -296,7 +296,42 @@ class ClansCommands(Subcommands):
         return True
 
     def kick(self, sender: CommandSender, command: Command, args: list[str]):
-        raise NotImplementedError
+        if not isinstance(sender, Player):
+            sender.send_error_message(self.messages.get("not_a_player", "Only players can use this command."))
+            return True
+
+        if len(args) == 0:
+            sender.send_error_message(self.messages.get("usage_kick", "Usage: /clan kick <player: player>"))
+            return True
+
+        target_name = args[0]
+        target = self.plugin.server.get_player(target_name)
+        if not target:
+            msg = self.messages.get("player_not_found", "Player [player_name] not found.")
+            msg = msg.replace("[player_name]", target_name)
+            sender.send_error_message(msg)
+            return True
+
+        async def kick_task():
+            xuid = int(sender.xuid)
+            clan = self.db.get_clan_by_xuid(xuid)
+            target_xuid = int(target.xuid)
+            
+            if not clan or target_xuid not in clan.members_xuids or xuid == target_xuid:
+                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("cannot_kick", "Cannot kick this player.")))
+                return
+
+            self.db.remove_member(xuid, target_xuid)
+            
+            def notify():
+                msg = self.messages.get("player_kicked", "Kicked [player_name].").replace("[player_name]", target.name)
+                sender.send_message(msg)
+                target.send_message(self.messages.get("you_were_kicked", "You have been kicked from the clan."))
+            
+            self.scheduler.run_task(self.plugin, notify)
+
+        self._submit_and_handle_future_result(kick_task())
+        return True
 
     def leave(self, sender: CommandSender, command: Command, args: list[str]):
         if not isinstance(sender, Player):

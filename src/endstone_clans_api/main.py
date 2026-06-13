@@ -137,6 +137,10 @@ class ClansApiPlugin(Plugin):
             ("messages.invite_declined", "[player_name] declined your invitation.", "Message shown when a player declines an invitation"),
             ("messages.player_already_in_clan", "[player_name] is already in a clan.", "Message shown when inviting someone already in a clan"),
             ("messages.privacy_no_invites", "[player_name] does not allow clan invitations.", "Message shown when inviting someone who disabled invites"),
+            ("messages.usage_kick", "Usage: /clan kick <player>", "Message shown when /clan kick is used incorrectly"),
+            ("messages.cannot_kick", "You cannot kick this player (are you the owner? are they in your clan?)", "Shown when a kick fails"),
+            ("messages.player_kicked", "[player_name] has been kicked from the clan.", "Success message for kicking"),
+            ("messages.you_were_kicked", "You have been kicked from the clan.", "Message shown to the player who was kicked"),
 
             ("config_form.title", "Clan Preferences", "Title of the player preferences form"),
             ("config_form.allow_invites", "Allow Clan Invitations", "Toggle label for invitations"),
