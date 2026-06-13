@@ -72,7 +72,7 @@ class ClansCommands(Subcommands):
             return True
 
         if len(args) == 0:
-            sender.send_error_message(self.messages.get("usage_create", "Usage: /clan create <name>"))
+            sender.send_error_message(self.messages.get("usage_create", "Usage: /clan create <name: str>"))
             return True
 
         clan_name = " ".join(args)
@@ -96,13 +96,41 @@ class ClansCommands(Subcommands):
                 msg = msg.replace("[clan_name]", clan_name)
                 self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
             except Exception as e:
+                # What is the point
                 raise e
 
         self._submit_and_handle_future_result(create_task())
         return True
 
     def rename(self, sender: CommandSender, command: Command, args: list[str]):
-        raise NotImplementedError
+        if not isinstance(sender, Player):
+            sender.send_error_message(self.messages.get("not_a_player", "Only players can use this command."))
+            return True
+
+        if len(args) == 0:
+            sender.send_error_message(self.messages.get("usage_create", "Usage: /clan rename <name: str>"))
+            return True
+
+        player = sender
+
+        async def rename_task():
+            clan = self.db.get_clan_by_xuid(int(player.xuid))
+            
+            if not clan:
+                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_in_a_clan", "not in a clan")))
+                return
+
+            if clan.owner_xuid != player.xuid:
+                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("not_the_owner", "not the owner")))
+                return
+
+            try:
+                self.db.rename_clan(clan.owner_xuid, args[0])
+            except RuntimeError:
+                self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("clan_name_already_taken", "clan name already taken")))
+                return
+
+        self._submit_and_handle_future_result(rename_task())
 
     def invite(self, sender: CommandSender, command: Command, args: list[str]):
         raise NotImplementedError

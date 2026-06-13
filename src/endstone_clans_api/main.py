@@ -24,7 +24,7 @@ class ClansApiPlugin(Plugin):
                 "/clan <subcommand: string> [args: message]",
                 "/clan help",
                 "/clan create <name: str>",
-                "/clan rename <old_name: str> <new_name: str>",
+                "/clan rename <name: str>",
                 "/clan invite <player: player>",
                 "/clan kick <player: player>",
                 "/clan leave",
@@ -108,6 +108,9 @@ class ClansApiPlugin(Plugin):
             ("messages.clan_left", "You have left the clan [clan_name].", "Message shown when a player leaves a clan"),
             ("messages.clan_disbanded", "Your clan [clan_name] has been disbanded.", "Message shown when a clan is disbanded because the owner left"),
             ("messages.help_header", "--- Clan Help ---", "Goes atop the help area."),
+            ("messages.not_in_a_clan", "You are NOT in a clan!!", "Message shown when player attempts to do a clan-related action when NOT in a clan."),
+            ("messages.not_the_owner", "You're NOT the owner of the clan!!", "Message shown when player attempts to do a clan-related action when NOT the owner."),
+            ("messages.clan_name_already_taken", "That name is already taken!", "Message shown to players if a clan name is already taken."),
 
             # Everything underneath the help.* namespace is the help description for the
             # command specified.

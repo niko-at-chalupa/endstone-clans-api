@@ -36,6 +36,10 @@ class Database(ABC):
         ...
 
     @abstractmethod
+    def rename_clan(self, owner_xuid: int, new_name: str) -> None:
+        ...
+
+    @abstractmethod
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         ...
 
@@ -47,6 +51,7 @@ class _Database(Database):
         self._init_db()
 
     def create_clan(self, name: str, owner_xuid: int) -> None:
+        self._validate_name_availability(name)
         self._create_clan(name, owner_xuid)
 
     def get_clan(self, name: str) -> Optional[Clan]:
@@ -71,8 +76,16 @@ class _Database(Database):
     def delete_clan(self, owner_xuid: int) -> None:
         self._delete_clan(owner_xuid)
 
+    def rename_clan(self, owner_xuid: int, new_name: str) -> None:
+        self._validate_name_availability(new_name)
+        self._update_clan(owner_xuid, display_name=new_name)
+
     def remove_member(self, owner_xuid: int, member_xuid: int) -> None:
         self._remove_member(owner_xuid, member_xuid)
+
+    def _validate_name_availability(self, name: str) -> None:
+        if self.get_clan(name):
+            raise RuntimeError(f"Clan name '{name}' is already taken.")
 
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
