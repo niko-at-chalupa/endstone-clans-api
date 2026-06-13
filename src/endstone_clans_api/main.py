@@ -1,3 +1,4 @@
+import traceback
 from endstone_clans_api.commands import ClansCommands
 from pathlib import Path
 from typing import Any, cast
@@ -78,6 +79,7 @@ class ClansApiPlugin(Plugin):
         except Exception as e:
             self.logger.error(f"ERROR !!!!!!!!!!!!! 😭😭😭 While handling subcommand `{args[0]}` for `{sender.name}`!! 🥺🥺🥺")                
             self.logger.error(str(e))
+            self.logger.error(traceback.format_exc())
             
             sender.send_error_message(self.config.messages.get("generic_error", "generic error"))
 
