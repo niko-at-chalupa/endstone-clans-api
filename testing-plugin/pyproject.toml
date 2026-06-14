@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Testing plugin for endstone-clans-api"
 dependencies = [
     "endstone",
-    "endstone-clans-api @ file:.."
+    "endstone-clans-api @ git+https://github.com/niko-at-chalupa/endstone-clans-api.git"
 ]
 
 [project.entry-points."endstone.plugins"]
