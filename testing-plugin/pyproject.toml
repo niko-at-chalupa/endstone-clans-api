@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.entry-points."endstone.plugins"]
-endstone_clans_test = "endstone_clans_test.main:TestPlugin"
+endstone_clans_test = "endstone_clans_test:TestPlugin"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/endstone_clans_test"]
