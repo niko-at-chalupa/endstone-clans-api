@@ -3,6 +3,18 @@ from .main import ClansApiPlugin
 from .types import Clan
 from .database import Database as ClansDatabase
 from .api import ClansApi
+from .events import (
+    ClanEvent,
+    ClanCancellableEvent,
+    ClanCreateEvent,
+    ClanDeleteEvent,
+    ClanJoinEvent,
+    ClanLeaveEvent,
+    ClanKickEvent,
+    ClanRenameEvent,
+    ClanInviteEvent,
+    clan_event_handler,
+)
 from typing import cast
 
 def get_clans_api(plugin_manager: PluginManager) -> ClansApi | None:
@@ -17,4 +29,20 @@ def get_clans_api(plugin_manager: PluginManager) -> ClansApi | None:
     except Exception:
         return None
 
-__all__ = ["ClansApiPlugin", "Clan", "ClansDatabase", "ClansApi", "get_clans_api"]
+__all__ = [
+    "ClansApiPlugin",
+    "Clan",
+    "ClansDatabase",
+    "ClansApi",
+    "get_clans_api",
+    "ClanEvent",
+    "ClanCancellableEvent",
+    "ClanCreateEvent",
+    "ClanDeleteEvent",
+    "ClanJoinEvent",
+    "ClanLeaveEvent",
+    "ClanKickEvent",
+    "ClanRenameEvent",
+    "ClanInviteEvent",
+    "clan_event_handler",
+    ]

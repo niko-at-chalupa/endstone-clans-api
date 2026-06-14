@@ -1,3 +1,6 @@
+from endstone import Player
+from endstone.command import CommandSender
+from .types import Clan
 from abc import ABC
 from typing import Callable, Type, Any, get_type_hints
 import inspect
@@ -87,3 +90,47 @@ class ClanEventManager:
                         self._plugin.logger.error(f"Error while calling clan event handler {handler_name}: {e}")
                         import traceback
                         self._plugin.logger.error(traceback.format_exc())
+
+class ClanCreateEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan, creator: Player):
+        super().__init__()
+        self.clan = clan
+        self.creator = creator
+
+class ClanDeleteEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan):
+        super().__init__()
+        self.clan = clan
+
+class ClanJoinEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan, player: Player):
+        super().__init__()
+        self.clan = clan
+        self.player = player
+
+class ClanLeaveEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan, player: Player):
+        super().__init__()
+        self.clan = clan
+        self.player = player
+
+class ClanKickEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan, player: Player, kicker: CommandSender):
+        super().__init__()
+        self.clan = clan
+        self.player = player
+        self.kicker = kicker
+
+class ClanRenameEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan, old_name: str, new_name: str):
+        super().__init__()
+        self.clan = clan
+        self.old_name = old_name
+        self.new_name = new_name
+
+class ClanInviteEvent(ClanCancellableEvent):
+    def __init__(self, clan: Clan, inviter: Player, invitee: Player):
+        super().__init__()
+        self.clan = clan
+        self.inviter = inviter
+        self.invitee = invitee
