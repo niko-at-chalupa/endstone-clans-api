@@ -18,6 +18,11 @@ from .events import (
 from typing import cast
 
 def get_clans_api(plugin_manager: PluginManager) -> ClansApi | None:
+    """
+    Get the ClansApi object the plugin uses. Will return None if an error occours.
+
+    ## Note: Make sure you call this in on_enable or something similar. Internally, what this returns (ClansApiPlugin._api) is unset until the plugin's on_load() method gets called by the PluginManager
+    """
     try:
         plugin = cast(ClansApiPlugin, plugin_manager.get_plugin("ClansApiPlugin"))
         # I don't trust how it returns "Plugin." For all I know, this could return
