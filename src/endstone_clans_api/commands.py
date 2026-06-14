@@ -1,3 +1,4 @@
+from endstone_clans_api import ClansApi
 from endstone import Logger
 from endstone.scheduler import Scheduler
 from endstone.form import MessageForm, ModalForm, Toggle
@@ -11,6 +12,15 @@ from typing import Awaitable
 import concurrent.futures
 import time
 import json
+from .events import (
+    ClanCreateEvent,
+    ClanDeleteEvent,
+    ClanJoinEvent,
+    ClanLeaveEvent,
+    ClanKickEvent,
+    ClanRenameEvent,
+    ClanInviteEvent,
+)
 
 if TYPE_CHECKING:
     from .main import ClansConfig, ClansApiPlugin
@@ -90,6 +100,13 @@ class ClansCommands(Subcommands):
                     self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("already_in_clan", "already in clan")))
                     return
 
+                from .types import _Clan
+                temp_clan = _Clan(self.plugin, clan_name, xuid)
+                event = ClanCreateEvent(temp_clan, sender)
+                self.api.call_event(event)
+                if event.cancelled:
+                    return
+
                 try:
                     self.db.create_clan(clan_name, xuid)
                     msg = self.messages.get("clan_created", "clan created")
@@ -130,6 +147,12 @@ class ClansCommands(Subcommands):
 
                 try:
                     new_name = " ".join(args)
+
+                    event = ClanRenameEvent(clan, clan.display_name, new_name)
+                    self.api.call_event(event)
+                    if event.cancelled:
+                        return
+
                     self.db.rename_clan(xuid, new_name)
                     msg = self.messages.get("clan_renamed", "clan renamed to [clan_name]")
                     msg = msg.replace("[clan_name]", new_name)
@@ -223,13 +246,17 @@ class ClansCommands(Subcommands):
                     self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
                     return
 
-                # Check privacy settings
                 allow_invites_str = self.db.get_player_preference(target_xuid, "allow_invites")
                 allow_invites = allow_invites_str.lower() == "true" if allow_invites_str else True
                 if not allow_invites:
                     msg = self.messages.get("privacy_no_invites", "[player_name] does not allow clan invitations.")
                     msg = msg.replace("[player_name]", target.name)
                     self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(msg))
+                    return
+
+                event = ClanInviteEvent(clan, player, target)
+                self.api.call_event(event)
+                if event.cancelled:
                     return
 
                 cooldown_key = (str(xuid), str(target_xuid))
@@ -247,6 +274,11 @@ class ClansCommands(Subcommands):
                             if self.db.get_member_clan(int(p.xuid)):
                                 return
                             
+                            join_event = ClanJoinEvent(clan, p)
+                            self.api.call_event(join_event)
+                            if join_event.cancelled:
+                                return
+
                             self.db.add_member(clan.owner_xuid, int(p.xuid))
                             
                             def finalize_acceptance():
@@ -321,6 +353,11 @@ class ClansCommands(Subcommands):
                 self.scheduler.run_task(self.plugin, lambda: sender.send_error_message(self.messages.get("cannot_kick", "Cannot kick this player.")))
                 return
 
+            event = ClanKickEvent(clan, target, sender)
+            self.api.call_event(event)
+            if event.cancelled:
+                return
+
             self.db.remove_member(xuid, target_xuid)
             
             def notify():
@@ -348,11 +385,21 @@ class ClansCommands(Subcommands):
                     return
 
                 if clan.owner_xuid == xuid:
+                    event = ClanDeleteEvent(clan)
+                    self.api.call_event(event)
+                    if event.cancelled:
+                        return
+
                     self.db.delete_clan(xuid)
                     msg = self.messages.get("clan_disbanded", "clan disbanded")
                     msg = msg.replace("[clan_name]", clan.display_name)
                     self.scheduler.run_task(self.plugin, lambda: sender.send_message(msg))
                 else:
+                    event = ClanLeaveEvent(clan, sender)
+                    self.api.call_event(event)
+                    if event.cancelled:
+                        return
+
                     self.db.remove_member(clan.owner_xuid, xuid)
                     msg = self.messages.get("clan_left", "clan disbanded")
                     msg = msg.replace("[clan_name]", clan.display_name)
@@ -375,3 +422,9 @@ class ClansCommands(Subcommands):
             "kick": self.kick,
             "leave": self.leave,
         }
+
+    @property
+    def api(self) -> ClansApi:
+        api = self.plugin.api
+        assert api
+        return api
