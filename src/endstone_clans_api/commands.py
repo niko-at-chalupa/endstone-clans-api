@@ -1,8 +1,7 @@
-from endstone_clans_api import ClansApi
 from endstone import Logger
 from endstone.scheduler import Scheduler
 from endstone.form import MessageForm, ModalForm, Toggle
-from endstone_clans_api.database import Database
+from .database import Database
 from abc import ABC
 from typing import TYPE_CHECKING, Callable, TypeVar
 from endstone.command import CommandSender, Command
@@ -24,6 +23,7 @@ from .events import (
 
 if TYPE_CHECKING:
     from .main import ClansConfig, ClansApiPlugin
+    from .api import ClansApi
 
 _T = TypeVar("_T")
 
@@ -424,7 +424,7 @@ class ClansCommands(Subcommands):
         }
 
     @property
-    def api(self) -> ClansApi:
+    def api(self) -> 'ClansApi':
         api = self.plugin.api
         assert api
         return api

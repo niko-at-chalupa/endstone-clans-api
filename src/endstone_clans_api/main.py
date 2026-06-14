@@ -1,5 +1,5 @@
 import traceback
-from endstone_clans_api.commands import ClansCommands
+from .commands import ClansCommands
 from pathlib import Path
 from typing import Any, cast
 from endstone.plugin import Plugin
