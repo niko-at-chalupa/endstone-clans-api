@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "endstone-clans-api"
-version = "0.1.1"
+version = "1.0.0"
 description = ""
 authors = [
     { name = "niko-at-chalupa"},
