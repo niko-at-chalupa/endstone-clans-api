@@ -8,19 +8,19 @@ A plugin that manages clans (or teams, if you will). This is meant to be used in
 
 ## Features
 
-> - Portable SQLite database
+> - **Portable SQLite database** /
 > You can test this plugin in staging, and bring the `clans.db` file to production. While it's not recommended to modify the database while it's still running, you can do it and most of the time you'll be fine.
 
-> - User-facing commands that let them manage their own clans
+> - **User-facing commands that let them manage their own clans** /
 > Users may create clans, rename their own clans, whatever. They must stay in only one clan, though.
 
-> - API that _respects_ your language server
+> - **API that _respects_ your language server** /
 > No more blindly throwing methods, `getattr`s, and `setattr`s at an `Any` type like in certain other APIs. As long as you import `get_clans_api` and use that, then your language server gets to have all the information to do things like full autocomplete and typehints.
 
-> - Event system
+> - **Event system** /
 > You can cancel events, do whatever. You can even use this to do things like replace the invite UI with your own.
 
-> - Extensive config
+> - **Extensive config** /
 > The config lets you configure a lot.
 >
 > Every single piece of front-end facing text translatable through the config.
