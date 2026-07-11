@@ -24,7 +24,7 @@ def get_clans_api(plugin_manager: PluginManager) -> ClansApi | None:
     ## Note: Make sure you call this in on_enable or something similar. Internally, what this returns (ClansApiPlugin._api) is unset until the plugin's on_load() method gets called by the PluginManager
     """
     try:
-        plugin = cast(ClansApiPlugin, plugin_manager.get_plugin("ClansApiPlugin"))
+        plugin = cast(ClansApiPlugin, plugin_manager.get_plugin("clans_api"))
         # I don't trust how it returns "Plugin." For all I know, this could return
         # Plugin | None, just like get_player.
         if not plugin:
